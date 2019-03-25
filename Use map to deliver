@@ -1,0 +1,589 @@
+/*#include<iostream>
+#include<algorithm>
+#include<map>
+#include<fstream>
+#include <iostream>
+#include <fstream>
+#include <sstream>
+using namespace std;
+class EasyConfig {
+	string FileName;
+	map<string, string>	ConfigMap;
+	const string & FindKey(const string & Key);
+	int ReadText();
+public:
+	EasyConfig();
+	void Dump();
+	int Read(const string & FileName);
+	int GetInteger(const string & Key);
+	float GetFloat(const string & Key);
+	string GetString(const string & Key);
+	const char * GetChars(const string & Key);
+};
+int EasyConfig::ReadText()  {
+	string Line, Key, Value, Tmp;
+	ifstream File(FileName.c_str());
+	while (!File.eof())   {
+		std::getline(File, Line, '\n');
+		int n = Line.find_first_of("#;");
+		Tmp = n<0 ? Line : string(Line, 0, n);
+		n = Tmp.find_first_of('=');
+		if (n < 0)  return -1;
+		Key = string(Tmp, 0, n);
+		Value = string(Tmp, n + 1, Tmp.length());
+		ConfigMap[Key] = Value;
+	}
+	return 0;//将文件读取之后存放在map里边
+}
+
+
+int main(){
+	EasyConfig config;
+    config.Dump();
+	config.Read(1.txt);
+	int GetInteger();
+	float GetFloat(Confi);
+	string GetString(const string & Key);
+	const char * GetChars(const string & Key);
+	config.
+	return 0;
+
+
+}
+
+//自己思考的一部分
+*/
+
+
+
+
+
+/******************************************************************************
+  
+	FileName	: EasyConfig.cpp
+	Author		: Wen Bing Hai
+	Data		: 2006-11-18
+	Version		: 0.2
+	Description	: Define class EasyConfig, which manages the simple config file.
+
+******************************************************************************/
+
+#pragma warning( disable : 4786 )
+
+#include <iostream>
+#include <fstream>
+#include <sstream>
+#include <algorithm>
+#include "EasyConfig.h"
+
+using namespace std;
+
+
+/*****************************************************************************/
+
+EasyConfig::EasyConfig( ) : Unknown("-567.89  unknown key")  
+{	
+}
+
+
+const string & EasyConfig::FindKey( const string & Key )
+{
+	if( (it=ConfigMap.find(Key)) == ConfigMap.end() )
+	{	
+		cout<<"unknown key: "<<Key<<endl;
+		return Unknown;
+	}
+	else
+	{
+		return (*it).second;	
+	}
+}
+
+
+inline string EasyConfig::GetString(  const string & Key )
+{
+	return FindKey( Key );
+}
+
+
+inline const char * EasyConfig::GetChars(  const string & Key )
+{
+	return FindKey( Key ).c_str();
+}
+
+
+int EasyConfig::GetInteger( const string & Key )
+{
+	int Value;
+	istringstream( FindKey(Key) ) >> Value;
+	return Value;
+}
+
+
+float EasyConfig::GetFloat( const string & Key )
+{
+	float Value;
+	istringstream( FindKey(Key) ) >> Value;
+	return Value;
+}
+
+
+void EasyConfig::Dump( )
+{
+	if( FileName.empty() )
+	{
+		cout<<endl<<"please read a config file at first"<<endl; 
+	}
+	else
+	{
+		cout<<endl<<"-------- "<<FileName<<" --------"<<endl;
+		for( it=ConfigMap.begin(); it!=ConfigMap.end(); ++it )
+		{
+			cout<<(*it).first<<" =  "<<(*it).second<<endl;
+		}
+		cout<<endl;
+	}
+}
+
+int EasyConfig::Read( const string & Name )
+{
+	ConfigMap.clear( );
+
+	FileName = Name;
+	transform( FileName.begin(), FileName.end(), FileName.begin(), toupper );
+	
+	int Len = FileName.length();
+
+
+#ifdef USING_XML_CONFIG /////////////////////////////////////
+
+	if( Len >= 5 && FileName.compare(Len-4, 4, ".XML") == 0 )
+	{
+		return ReadXml( );
+	}
+
+#endif  /* USING_XML_CONFIG */
+
+	if( Len >= 5 && FileName.compare(Len-4, 4, ".INI") == 0 )
+	{
+
+#ifdef USING_REGEX_CONFIG /////////////////////////////////////
+		
+		return ReadTextRegex( );
+
+#endif /* USING_XML_CONFIG */
+	
+		return ReadText( );
+	}
+
+	cout<<endl<<"Config file name error: "<<Name<<endl; 
+	return -1;
+}
+
+
+///////////////////////////////////////////////////////////////////////////////
+int EasyConfig::ReadText( )
+{
+	ifstream File( FileName.c_str() );
+	if( ! File )
+	{
+		cout<<"open config file error : "<<FileName<<endl;
+		return -1;
+	}
+
+	string Line, Key, Value, Tmp;
+
+	while( ! File.eof() )
+	{
+		// read a line from the file
+		std::getline( File, Line, '\n' );
+
+		// remove the comments in the line
+		int n = Line.find_first_of( "#;" );
+		if( n < 0 )
+		{
+			Tmp = Line;
+		}
+		else
+		{
+			Tmp = string( Line, 0, n );
+		}
+		
+		// test if a white line
+		if( Trim::TrimAll(Tmp).empty() )
+		{
+			continue;
+		}
+		
+		//locate the char '='
+		n = Tmp.find_first_of( '=' );	
+		if( n < 0 )
+		{
+			cout<<"read config file error : "<<Line<<endl;
+			return -1;
+		}
+
+		//get key and value
+		Key   = string( Tmp, 0, n );
+		Value = string( Tmp, n+1, Tmp.length() );
+
+		//check the Key and the Value
+		if( Trim::TrimAll(Key).empty() || Trim::TrimAll(Value).empty() )
+		{
+			cout<<"read config file error : "<<Line<<endl;
+			return -1;		
+		}
+
+		ConfigMap[Key] = Value;
+	}
+	
+	return 0;
+}
+
+
+///////////////////////////////////////////////////////////////////////////////
+#ifdef USING_REGEX_CONFIG 
+
+int EasyConfig::ReadTextRegex( )
+{
+	ifstream File( FileName.c_str() );
+	if( ! File )
+	{
+		cout<<"open config file error : "<<FileName<<endl;
+		return -1;
+	}
+
+	string Line;
+	smatch What;
+	regex  Comment( "\\s*([#;].*)?" );
+	regex  Express( "\\s*([\\d_A-Z]+)\\s*=\\s*([\\d\\w\.]+)\\s*([#;].*)?" );
+	//regex  Exp( "\\s*(([\\d\\w]+)\\s*=\\s*([\\d\\w\.]+)\\s*)?([#;].*)?" );
+
+	while( ! File.eof() )
+	{
+		// read a line from the file
+		std::getline( File, Line, '\n' );
+		
+		//space line or comment
+		if( regex_match( Line, Comment ) )
+		{
+			continue;
+		}
+
+		if( ! regex_match( Line, What, Express ) )
+		{
+			cout<<"Error: "<<Line<<endl;
+		}
+		else
+		{
+			ConfigMap[What[1]] = What[2];
+		}
+	}	
+
+	return 0;
+}
+
+#endif /* USING_REGEX_CONFIG */
+
+///////////////////////////////////////////////////////////////////////////////
+#ifdef USING_SPIRIT_CONFIG 
+
+int EasyConfig::ReadTextSpirit( )
+{
+
+	return 0;
+}
+
+#endif /* USING_SPIRIT_CONFIG */
+
+///////////////////////////////////////////////////////////////////////////////
+#ifdef USING_XML_CONFIG
+
+void XMLCALL EasyConfig::StartElement( void * UserData, const char * Element, const char ** Attr )
+{
+	EasyConfig * This = static_cast<EasyConfig *>( UserData );
+	++This->Depth;
+}
+
+
+void XMLCALL EasyConfig::DataHandler( void * UserData, const char * Value, int Len )
+{
+	EasyConfig * This = static_cast<EasyConfig *>( UserData );
+	This->Data += string( Value, 0, Len );
+}
+
+
+void XMLCALL EasyConfig::EndElement( void * UserData, const char * Element)
+{
+	EasyConfig * This = static_cast<EasyConfig *>( UserData );
+
+	if( --This->Depth == 0 )
+	{
+		return;
+	}
+
+	string Key = Element, Value=This->Data;
+	Trim::TrimAll( Value );
+
+	if( Value.empty() )
+	{
+		cout<<"read config file error : "<<Key<<endl;
+		return;
+	}
+
+	This->ConfigMap[Key] = Value;
+	This->Data.erase( );
+}
+
+
+int EasyConfig::ReadXml( )
+{
+	XML_Parser Parser = XML_ParserCreate(NULL);
+	if( ! Parser )
+	{
+		cout<<"can not allocate memory for parser"<<endl;
+		return -1;
+	}
+
+	Depth = 0;
+	XML_SetUserData( Parser, this );
+	XML_SetElementHandler( Parser, StartElement, EndElement );
+	XML_SetCharacterDataHandler( Parser, DataHandler );
+
+	ifstream File( FileName.c_str() );
+	if( ! File )
+	{
+		cout<<"open config file error : "<<FileName<<endl;
+		return -1;
+	}
+
+	char Buffer[2048];
+
+	while( ! File.eof() )
+	{
+		File.read( Buffer, sizeof(Buffer) );
+
+		if( XML_Parse( Parser, Buffer, File.gcount(), File.eof() ) == XML_STATUS_ERROR ) 
+		{
+			cout<<"parse error at line "<<XML_GetCurrentLineNumber(Parser) \
+				<<",  "<<XML_ErrorString(XML_GetErrorCode(Parser))<<endl;
+			return -1;
+		}
+  	}
+
+	XML_ParserFree( Parser);
+ 	return 0;
+}
+
+#endif  /* USING_XML_CONFIG */
+
+
+//******************************************************************************
+// The below codes are to test the EasyConfig.
+
+int main( int argc, char * argv[] )
+{
+	EasyConfig Config;
+
+	//if( Config.Read( "MyConfig.ini" ) != 0 )
+	if( Config.Read( "MyConfig.xml" ) != 0 )
+	{
+		cin.get( );
+		return 0;
+	}
+
+	//cin.get( );
+	//return 0;
+	
+	Config.Dump();
+
+	string key;
+
+	key = "TEST_CHARS";
+	cout<<key<<"   "<<Config.GetChars(key)<<endl;
+
+	key = "TEST_STRING";
+	cout<<key<<"   "<<Config.GetString(key)<<endl;
+
+	key = "TEST_INTEGER";
+	cout<<key<<"   "<<Config.GetInteger(key)<<endl;
+
+	key = "TEST_FLOAT";
+	cout<<key<<"   "<<Config.GetFloat(key)<<endl;
+
+	key = "TEST_TIGHT";
+	cout<<key<<"   "<<Config.GetString(key)<<endl;
+
+	key = "TEST_SPACE";
+	cout<<key<<"   "<<Config.GetString(key)<<endl;
+
+	key = "TEST_COMMENT1";
+	cout<<key<<"   "<<Config.GetString(key)<<endl;
+
+	key = "TEST_COMMENT2";
+	cout<<key<<"   "<<Config.GetChars(key)<<endl;
+
+	key = "TEST_UNKNOWN1";
+	cout<<key<<"   "<<Config.GetChars(key)<<endl;
+
+	key = "TEST_UNKNOWN2";
+	cout<<key<<"   "<<Config.GetFloat(key)<<endl;
+
+
+	cin.get();
+	return 0;
+}
+
+/*/
+
+
+#include <cstdio>
+#include <iostream>
+#include <cassert>
+
+using namespace std;
+
+int main()
+{
+	cout<<"--- Trim Class Test ---"<<endl;
+
+	char s[128];
+	string ss, s1, s2;
+
+	// test a string with some spaces at head and tail
+	s1 = "12345  67890";
+	strcpy( s, "   12345  67890  " );
+	assert( s1 == Trim::TrimAll(s) );
+	
+	s1 = "12345  67890  ";
+	strcpy( s, "   12345  67890  " );
+	assert( s1 == Trim::TrimLeft(s) );
+	
+	s1 = "   12345  67890";
+	strcpy( s, "   12345  67890  " );
+	assert( s1 == Trim::TrimRight(s) );
+
+	s1 = "12345  67890";
+	s2 = "   12345  67890  ";
+	assert( s1 == Trim::TrimAll(s2) );
+	
+	s1 = "12345  67890  ";
+	s2 = "   12345  67890  ";
+	assert( s1 == Trim::TrimLeft(s2) );
+	
+	s1 = "   12345  67890";
+	s2 = "   12345  67890  ";
+	assert( s1 == Trim::TrimRight(s2) );
+
+
+	// test a string without space at head and tail.
+	ss = "12345  67890";
+
+	strcpy( s, ss.c_str() );
+	assert( ss == Trim::TrimAll(s) );
+	assert( ss == Trim::TrimLeft(s) );
+	assert( ss == Trim::TrimRight(s) );
+	
+	s1 = ss;
+	assert( ss == Trim::TrimAll(s1) );
+	assert( ss == Trim::TrimLeft(s1) );
+	assert( ss == Trim::TrimRight(s1) );
+
+	
+	// test a empty string
+	ss = "";
+
+	strcpy( s, ss.c_str() );
+	assert( ss == Trim::TrimAll(s) );
+	assert( ss == Trim::TrimLeft(s) );
+	assert( ss == Trim::TrimRight(s) );
+	
+	s1 = ss;
+	assert( ss == Trim::TrimAll(s1) );
+	assert( ss == Trim::TrimLeft(s1) );
+	assert( ss == Trim::TrimRight(s1) );
+
+	// test a string full of spaces
+	ss = "        ";
+	s1 = "";
+
+	strcpy( s, ss.c_str() );
+	assert( s1 == Trim::TrimAll(s) );
+	
+	strcpy( s, ss.c_str() );
+	assert( s1 == Trim::TrimLeft(s) );
+	
+	strcpy( s, ss.c_str() );
+	assert( s1 == Trim::TrimRight(s) );
+
+	s2 = ss;
+	assert( s1 == Trim::TrimAll(s2) );
+
+	s2 = ss;
+	assert( s1 == Trim::TrimLeft(s2) );
+
+	s2 = ss;
+	assert( s1 == Trim::TrimRight(s2) );
+
+	
+	cout<<"he,he, the test is passed."<<endl;
+	cin.get();
+    return 0;
+}
+
+//*/
+
+/*
+void make_daemon(void)
+{
+	pid_t pid;
+	FILE * lockfd;
+	sigset_t sighup;
+	int i;
+
+	extern pid_t getsid(pid_t);
+	pid = fork();//第一个子进程生成
+	if (pid < 0) {
+		printinfo("fork error!",INFOERROR);
+		exit(FAILEXIT);
+	}
+	else if (pid > 0) 
+	{
+		printinfo("fork 1 ok! ", INFOSCREEN);
+		exit(OKEXIT);//退出父进程，摆脱shell的控制
+	}
+
+	pid = getpid();//获得子进程自身的id
+	lockfd = fopen(PIDFILE, "w");//以下是将pid写入文件
+	if (lockfd != NULL) 
+	{
+		fprintf(lockfd, "%d\n", pid);
+		fclose(lockfd);
+	}//写入pid
+
+	if (getsid(0) != pid) 
+	{//创建新的会话期
+		if (setsid() < 0) 
+		{
+			printinfo("backupdaemon setsid error!",INFOERROR);
+			perror("setsid");
+		}
+	}
+	
+	if(pid=fork())
+	{//再次生成子进程，这时候是孙子进程
+		exit(0);//退出上一代进程
+	}
+	else if(pid<0)
+	{
+		exit(1);
+	}
+
+	close(1);//关闭文件
+	close(2);
+	chdir(rundir);//改变运行的目录
+	umask(022);//改变文件权限
+}
+
+//*/
+
